@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link' // 1. Add this import!
 import { createClient } from '../../../utils/supabase/client'
 
 export default function LoginPage() {
@@ -63,6 +64,15 @@ export default function LoginPage() {
           {loading ? 'Logging in...' : 'Log In'}
         </button>
       </form>
+      {/* 2. Add this linking section below your form */}
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <p style={{ color: '#666' }}>
+          Don't have an account?{' '}
+          <Link href="/signup" style={{ color: '#0070f3', textDecoration: 'none', fontWeight: 'bold' }}>
+            Sign up here
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }
