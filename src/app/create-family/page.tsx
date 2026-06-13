@@ -8,10 +8,10 @@ export default function CreateFamilyPage() {
   const [familyName, setFamilyName] = useState('')
   const [loading, setLoading] = useState(false)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false) // State for copy button feedback
   const router = useRouter()
   const supabase = createClient()
 
-  // Helper function to generate a 6-character alphanumeric code
   const generateJoinCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase()
   }
@@ -26,7 +26,6 @@ export default function CreateFamilyPage() {
 
       const joinCode = generateJoinCode()
 
-      // 1. Insert the family with the new join_code
       const { data: newFamily, error: familyError } = await supabase
         .from('families')
         .insert([{ name: familyName, join_code: joinCode }])
@@ -35,7 +34,6 @@ export default function CreateFamilyPage() {
 
       if (familyError) throw familyError
 
-      // 2. Update the user
       const { error: userError } = await supabase
         .from('users')
         .update({ family_id: newFamily.id, role: 'Admin' })
@@ -43,18 +41,24 @@ export default function CreateFamilyPage() {
 
       if (userError) throw userError
 
-      // Instead of an alert and redirect, we show the code on screen!
       setCreatedCode(joinCode)
 
     } catch (err: any) {
-      console.error("Full error details:", err)
       alert("Error: " + err.message)
     } finally {
       setLoading(false) 
     }
   }
 
-  // If successfully created, show the code before letting them go to the dashboard
+  // --- NEW COPY FUNCTION ---
+  const handleCopy = () => {
+    if (createdCode) {
+      navigator.clipboard.writeText(createdCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000) // Reset back to "Copy Code" after 2s
+    }
+  }
+
   if (createdCode) {
     return (
       <div style={{ maxWidth: '400px', margin: '40px auto', fontFamily: 'sans-serif', textAlign: 'center' }}>
@@ -63,17 +67,25 @@ export default function CreateFamilyPage() {
         <div style={{ margin: '20px 0', padding: '20px', backgroundColor: '#f0f0f0', borderRadius: '8px', fontSize: '24px', letterSpacing: '2px', fontWeight: 'bold' }}>
           {createdCode}
         </div>
-        <button 
-          onClick={() => router.push('/dashboard')}
-          style={{ padding: '10px 20px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-        >
-          Go to Dashboard
-        </button>
+        
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          <button 
+            onClick={handleCopy}
+            style={{ padding: '10px 20px', backgroundColor: copied ? '#28a745' : '#666', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            {copied ? 'Copied!' : 'Copy Code'}
+          </button>
+          <button 
+            onClick={() => router.push('/dashboard')}
+            style={{ padding: '10px 20px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            Go to Dashboard
+          </button>
+        </div>
       </div>
     )
   }
 
-  // Default Form View
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto', fontFamily: 'sans-serif' }}>
       <h2>Create Your Family</h2>

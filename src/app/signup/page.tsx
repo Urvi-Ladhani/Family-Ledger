@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '../../../utils/supabase/client'
+import Link from 'next/link'
 
 export default function SignupPage() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [intendedRole, setIntendedRole] = useState<'Admin' | 'Member'>('Admin') // <-- NEW STATE
-  const [error, setError] = useState<string | null>(null)
+  const [role, setRole] = useState('Admin') // Restored: Default role state
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -17,90 +17,112 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError(null)
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
+    try {
+      // 1. Sign up the user and store name/role in auth metadata
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name, role: role }
+        }
+      })
 
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      // THE NEW ROUTING LOGIC!
-      if (intendedRole === 'Admin') {
+      if (authError) throw authError
+      if (!authData.user) throw new Error("Signup failed.")
+
+      // 2. Update their profile in public.users with name AND role
+      const { error: profileError } = await supabase
+        .from('users')
+        .update({ full_name: name, role: role })
+        .eq('id', authData.user.id)
+
+      if (profileError) {
+        console.error("Profile update error:", profileError)
+      }
+
+      alert("Signup successful!")
+      
+      // 3. Restored: Smart Routing based on role
+      if (role === 'Admin') {
         router.push('/create-family')
       } else {
         router.push('/join-family')
       }
+
+    } catch (err: any) {
+      alert("Error: " + err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto', fontFamily: 'sans-serif' }}>
-      <h2>Sign Up for FamilyLedger</h2>
-      
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      
-      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+      <h2>Sign Up</h2>
+      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         
-        {/* THE NEW ROLE SELECTOR */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
-          <strong>What are you here to do?</strong>
-          <label style={{ display: 'flex', gap: '10px', cursor: 'pointer' }}>
-            <input 
-              type="radio" 
-              value="Admin" 
-              checked={intendedRole === 'Admin'} 
-              onChange={() => setIntendedRole('Admin')} 
-            />
-            Create a New Family (I will be Admin)
-          </label>
-          <label style={{ display: 'flex', gap: '10px', cursor: 'pointer' }}>
-            <input 
-              type="radio" 
-              value="Member" 
-              checked={intendedRole === 'Member'} 
-              onChange={() => setIntendedRole('Member')} 
-            />
-            Join an Existing Family (I will be a Member)
-          </label>
-        </div>
-
+        <input 
+          type="text" 
+          placeholder="Full Name" 
+          value={name} 
+          onChange={(e) => setName(e.target.value)}
+          style={{ padding: '10px', fontSize: '16px' }}
+          required
+        />
+        
         <input 
           type="email" 
-          placeholder="Email address" 
+          placeholder="Email" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)}
-          required
           style={{ padding: '10px', fontSize: '16px' }}
+          required
         />
+        
         <input 
           type="password" 
-          placeholder="Password (min 6 chars)" 
+          placeholder="Password" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)}
-          required
           style={{ padding: '10px', fontSize: '16px' }}
+          required
         />
-        <button 
-          type="submit" 
-          disabled={loading}
-          style={{ padding: '10px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '5px' }}
-        >
-          {loading ? 'Signing up...' : `Sign Up & ${intendedRole === 'Admin' ? 'Create' : 'Join'}`}
+
+        {/* Restored: Role Selection Radio Buttons */}
+        <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px' }}>
+          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>I want to:</p>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+              <input 
+                type="radio" 
+                name="role" 
+                value="Admin" 
+                checked={role === 'Admin'} 
+                onChange={(e) => setRole(e.target.value)} 
+              />
+              Create a Family
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+              <input 
+                type="radio" 
+                name="role" 
+                value="Member" 
+                checked={role === 'Member'} 
+                onChange={(e) => setRole(e.target.value)} 
+              />
+              Join a Family
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" disabled={loading} style={{ padding: '10px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+          {loading ? 'Signing up...' : 'Sign Up'}
         </button>
       </form>
-
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
-        <p style={{ color: '#666' }}>
-          Already have an account?{' '}
-          <Link href="/login" style={{ color: '#0070f3', textDecoration: 'none', fontWeight: 'bold' }}>
-            Log in here
-          </Link>
-        </p>
-      </div>
+      <p style={{ marginTop: '20px', textAlign: 'center' }}>
+        Already have an account? <Link href="/login" style={{ color: '#0070f3' }}>Login</Link>
+      </p>
     </div>
   )
 }
