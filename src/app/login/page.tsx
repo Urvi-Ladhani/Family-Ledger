@@ -15,16 +15,14 @@ export default function LoginPage() {
 
   // --- NEW: Google Login Function ---
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`
-      }
-    })
-    if (error) {
-      alert("Error with Google: " + error.message)
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      // THIS is the missing piece that tells Google where to send them back!
+      redirectTo: `${window.location.origin}/auth/callback`
     }
-  }
+  })
+}
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
