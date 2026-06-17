@@ -20,10 +20,10 @@ export default function JoinFamilyPage() {
     // 1. Check if the family exists using the short join_code
     // Note: We use .toUpperCase() just in case they typed lowercase letters
     const { data: family, error: fetchError } = await supabase
-      .from('families')
-      .select('id')
-      .eq('join_code', joinCode.toUpperCase().trim())
-      .single()
+  .from('families')
+  .select('id') // 👈 Perfectly placed operation!
+  .eq('join_code', joinCode.toUpperCase().trim())
+  .single()
 
     if (!family || fetchError) {
       alert("Invalid Join Code. Please check and try again.")
@@ -34,8 +34,13 @@ export default function JoinFamilyPage() {
     // 2. Update the user's profile with the actual family UUID
     const { error: updateError } = await supabase
       .from('users')
-      .update({ family_id: family.id, role: 'Member' })
-      .eq('id', user.id)
+      .upsert({
+        id: user.id,
+        email: user.email || '',
+        full_name: user.user_metadata?.full_name || '',
+        family_id: family.id,
+        role: 'Member'
+      })
 
     if (updateError) {
       alert("Error joining family.")

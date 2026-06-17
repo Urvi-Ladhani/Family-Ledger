@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../../../utils/supabase/client'
 import Link from 'next/link'
 
 export default function SignupPage() {
-  const [mounted, setMounted] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,18 +15,15 @@ export default function SignupPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // FIX: Prevents hydration mismatch by waiting for client-side load
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`
       }
     })
+
+    if (error) alert("Error: " + error.message)
   }
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -46,18 +42,20 @@ export default function SignupPage() {
       if (authError) throw authError
       if (!authData.user) throw new Error("Signup failed.")
 
-      alert("Signup successful!")
+      if (!authData.session) {
+        alert("Signup successful! Please check your email to confirm your account, then log in.")
+        router.push('/login')
+        return
+      }
+
       router.push(role === 'Admin' ? '/create-family' : '/join-family')
 
-    } catch (err: any) {
-      alert("Error: " + err.message)
+    } catch (err: unknown) {
+      alert("Error: " + (err instanceof Error ? err.message : 'Signup failed.'))
     } finally {
       setLoading(false)
     }
   }
-
-  // Prevents rendering until mounted
-  if (!mounted) return null
 
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto', fontFamily: 'sans-serif' }}>

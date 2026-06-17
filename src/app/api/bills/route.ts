@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     // 3. Join with users table via user_id foreign key mapping
     let dbQuery = supabase
       .from('bills')
+      // Join uploader info from `users` if available
       .select('*, uploader:users(full_name, display_name, email)');
     
     if (profile?.family_id) {
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ bills });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Server Fetch Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

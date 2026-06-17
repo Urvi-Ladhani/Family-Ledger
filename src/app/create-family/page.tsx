@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '../../../utils/supabase/client'
 
 export default function CreateFamilyPage() {
@@ -19,6 +20,9 @@ export default function CreateFamilyPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
+      // 💡 Clean up old preview URL to prevent memory leaks
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      
       setFile(selectedFile)
       setPreviewUrl(URL.createObjectURL(selectedFile))
     }
@@ -56,7 +60,7 @@ export default function CreateFamilyPage() {
 
       const { data: newFamily, error: familyError } = await supabase
         .from('families')
-        .insert([{ name: familyName, join_code: joinCode, avatar_url: avatarUrl }])
+        .insert([{ name: familyName, join_code: joinCode, avatar_url: avatarUrl, created_by: user.id }])
         .select()
         .single()
 
@@ -64,16 +68,21 @@ export default function CreateFamilyPage() {
 
       const { error: userError } = await supabase
         .from('users')
-        .update({ family_id: newFamily.id, role: 'Admin' })
-        .eq('id', user.id)
+        .upsert({
+          id: user.id,
+          email: user.email || '',
+          full_name: user.user_metadata?.full_name || '',
+          family_id: newFamily.id,
+          role: 'Admin'
+        })
 
       if (userError) throw userError
 
       setCreatedCode(joinCode)
       router.refresh()
 
-    } catch (err: any) {
-      alert("Error: " + err.message)
+    } catch (err: unknown) {
+      alert("Error: " + (err instanceof Error ? err.message : 'Failed to create family.'))
     } finally {
       setLoading(false) 
     }
@@ -113,7 +122,7 @@ export default function CreateFamilyPage() {
         
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
           {previewUrl ? (
-            <img src={previewUrl} alt="Preview" style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #0070f3' }} />
+            <Image src={previewUrl} alt="Preview" width={100} height={100} unoptimized style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #0070f3' }} />
           ) : (
             <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: '#eaeaea', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '40px' }}>
               📷

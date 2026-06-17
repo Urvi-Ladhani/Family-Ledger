@@ -15,14 +15,15 @@ export default function LoginPage() {
 
   // --- NEW: Google Login Function ---
   const handleGoogleLogin = async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      // THIS is the missing piece that tells Google where to send them back!
-      redirectTo: `${window.location.origin}/auth/callback`
-    }
-  })
-}
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    })
+
+    if (error) setError(error.message)
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,7 +89,7 @@ export default function LoginPage() {
 
       <div style={{ marginTop: '20px', textAlign: 'center' }}>
         <p style={{ color: '#666' }}>
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/signup" style={{ color: '#0070f3', textDecoration: 'none', fontWeight: 'bold' }}>
             Sign up here
           </Link>
