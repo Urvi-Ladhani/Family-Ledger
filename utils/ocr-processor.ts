@@ -31,46 +31,45 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Groceries': [
     'grocery', 'supermarket', 'whole foods', 'trader joes', 'kroger', 'safeway',
     'walmart', 'target', 'costco', 'food store', 'market', 'fruits', 'vegetables',
-    'bread', 'milk', 'eggs', 'produce', 'organic', 'sprouts'
+    'bread', 'milk', 'eggs', 'produce', 'organic', 'sprouts', 'dmart', 'reliance fresh'
   ],
   'Utilities': [
     'electric', 'water', 'gas', 'power', 'utility', 'phone', 'internet', 'cable',
-    'verizon', 'at&t', 'comcast', 'spectrum', 'bill', 'service provider', 'pge'
+    'verizon', 'at&t', 'comcast', 'spectrum', 'bill', 'service provider', 'pge', 'jio', 'airtel'
   ],
   'Transportation': [
     'uber', 'lyft', 'taxi', 'gas', 'fuel', 'parking', 'toll', 'car', 'vehicle',
     'shell', 'chevron', 'bp', 'exxon', 'mobil', 'transit', 'metro', 'train',
-    'airline', 'flight', 'hotel', 'airbnb', 'booking'
+    'airline', 'flight', 'hotel', 'airbnb', 'booking', 'ola'
   ],
   'Entertainment': [
     'movie', 'cinema', 'theater', 'netflix', 'spotify', 'hulu', 'disney', 'gaming',
-    'steam', 'playstation', 'xbox', 'concert', 'ticket', 'entertainment', 'cinema'
+    'steam', 'playstation', 'xbox', 'concert', 'ticket', 'entertainment', 'pvr', 'inox'
   ],
   'Health': [
     'pharmacy', 'doctor', 'hospital', 'medical', 'cvs', 'walgreens', 'clinic',
-    'dentist', 'therapy', 'health', 'medicine', 'prescription', 'urgent care'
+    'dentist', 'therapy', 'health', 'medicine', 'prescription', 'urgent care', 'apollo'
   ],
   'Dining': [
     'restaurant', 'cafe', 'coffee', 'pizza', 'burger', 'food delivery', 'doordash',
-    'ubereats', 'grubhub', 'dine', 'bistro', 'bar', 'brewery', 'pub', 'kitchen'
+    'ubereats', 'grubhub', 'dine', 'bistro', 'bar', 'brewery', 'pub', 'kitchen', 'zomato', 'swiggy'
   ],
   'Shopping': [
     'amazon', 'ebay', 'mall', 'retail', 'store', 'shop', 'clothing', 'apparel',
-    'nike', 'adidas', 'zara', 'h&m', 'forever', 'designer', 'fashion', 'shoes'
+    'nike', 'adidas', 'zara', 'h&m', 'forever', 'designer', 'fashion', 'shoes', 'flipkart', 'myntra'
   ]
 };
 
-// Regex patterns for amount extraction
+// Regex patterns for amount extraction - Updated to handle ₹ and "Total Paid"
 const TOTAL_AMOUNT_PATTERNS = [
-  /(?:grand\s+total|amount\s+due|balance\s+due|total\s+due|net\s+amount|total)\s*[:\-]?\s*(?:usd|rs\.?|inr|\$)?\s*([\d,]+(?:\.\d{1,2})?)/i,
-  /(?:usd|rs\.?|inr|\$)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:grand\s+total|amount\s+due|balance\s+due|total\s+due|total)/i
+  /(?:grand\s+total|amount\s+due|balance\s+due|total\s+due|net\s+amount|total\s+paid|total|amount)\s*[:\-]?\s*(?:usd|rs\.?|inr|\$|₹)?\s*([\d,]+(?:\.\d{1,2}|\/-)?)/i,
+  /(?:usd|rs\.?|inr|\$|₹)\s*([\d,]+(?:\.\d{1,2}|\/-)?)\s*(?:grand\s+total|amount\s+due|balance\s+due|total\s+due|total)/i
 ];
 
 const AMOUNT_PATTERNS = [
-  /(?:usd|rs\.?|inr|\$)\s*([\d,]+(?:\.\d{1,2})?)/gi,
-  /([\d,]+(?:\.\d{1,2})?)\s*(?:dollars|usd|euro|euros|rs\.?|inr)/gi
+  /(?:usd|rs\.?|inr|\$|₹)\s*([\d,]+(?:\.\d{1,2}|\/-)?)/gi,
+  /([\d,]+(?:\.\d{1,2}|\/-)?)\s*(?:dollars|usd|euro|euros|rs\.?|inr|₹)/gi
 ];
-
 // Regex patterns for date extraction
 const DATE_PATTERNS = [
   /(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/g,           // MM/DD/YYYY or DD/MM/YYYY
@@ -117,13 +116,16 @@ export function extractExpenseData(ocrText: string): ExtractedExpenseData {
 }
 
 function extractTotalAmount(ocrText: string): number | null {
+  // Break text into individual lines
   const lines = ocrText
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
+  // 1. Try Line-by-Line with Exact Keywords (Most accurate)
   for (const line of lines) {
-    if (/(subtotal|sub total|tax|change|cash|paid|tender|discount|saving)/i.test(line)) {
+    // If the line mentions cash given, tender, or change, SKIP IT
+    if (/(subtotal|sub total|tax|change|tender|cash|given|discount|saving)/i.test(line)) {
       continue;
     }
 
@@ -134,20 +136,45 @@ function extractTotalAmount(ocrText: string): number | null {
     }
   }
 
+  // 2. Try floating currency symbols (Safe lines only)
   const amounts: number[] = [];
-  for (const pattern of AMOUNT_PATTERNS) {
-    for (const match of ocrText.matchAll(pattern)) {
-      const parsed = parseAmount(match[1]);
-      if (parsed !== null) amounts.push(parsed);
+  for (const line of lines) {
+    if (/(change|tender|cash|given)/i.test(line)) continue; // SKIP payment lines
+
+    for (const pattern of AMOUNT_PATTERNS) {
+      for (const match of line.matchAll(pattern)) {
+        const parsed = parseAmount(match[1]);
+        if (parsed !== null) amounts.push(parsed);
+      }
     }
   }
 
-  if (amounts.length === 0) return null;
-  return Math.max(...amounts);
-}
+  if (amounts.length > 0) {
+    return Math.max(...amounts); // Returns the highest safe number
+  }
 
+  // 3. ULTIMATE FALLBACK: Find ALL numbers formatted as X.XX or X/- (Safe lines only)
+  const fallbackAmounts: number[] = [];
+  for (const line of lines) {
+    if (/(change|tender|cash|given)/i.test(line)) continue; // SKIP payment lines
+    
+    const rawNumbers = line.match(/\b\d{1,3}(?:,\d{3})*(?:\.\d{2}|\/-)\b/g);
+    if (rawNumbers) {
+      const parsedNumbers = rawNumbers.map(n => parseAmount(n)).filter((n): n is number => n !== null);
+      fallbackAmounts.push(...parsedNumbers);
+    }
+  }
+
+  if (fallbackAmounts.length > 0) {
+    return Math.max(...fallbackAmounts); // Returns highest safe number
+  }
+
+  return null;
+}
 function parseAmount(value: string): number | null {
-  const parsed = Number(value.replace(/,/g, ''));
+  // Removes commas, spaces, and the Indian exact amount suffix "/-"
+  const cleaned = value.replace(/,/g, '').replace(/\s/g, '').replace(/\/-$/, '');
+  const parsed = Number(cleaned);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
@@ -155,7 +182,9 @@ function detectCurrency(ocrText: string): string {
   if (/(₹|\brs\.?\b|\binr\b)/i.test(ocrText)) return 'INR';
   if (/\b(eur|euro|euros)\b/i.test(ocrText)) return 'EUR';
   if (/\bgbp\b|£/i.test(ocrText)) return 'GBP';
-  return 'USD';
+  if (/\b(usd|dollars|\$)\b/i.test(ocrText)) return 'USD';
+  // Default to INR instead of USD
+  return 'INR';
 }
 
 function extractDate(ocrText: string): string | null {
