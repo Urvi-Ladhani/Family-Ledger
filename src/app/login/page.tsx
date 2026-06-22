@@ -29,7 +29,7 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -37,8 +37,22 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
       setLoading(false)
-    } else {
-      router.push('/dashboard')
+      return
+    }
+
+    // Smart Routing: Check family status
+    if (authData.user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('family_id')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (profile?.family_id) {
+        router.push('/dashboard')
+      } else {
+        router.push('/join-family') // Or create-family, they can choose from there
+      }
     }
   }
 

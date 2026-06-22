@@ -21,10 +21,20 @@ export async function GET(request: Request) {
     }
   )
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
-  
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) return NextResponse.redirect(`${origin}/login?error=auth-failed`)
 
-  // The database trigger handles public.users now. Just redirect!
-  return NextResponse.redirect(`${origin}/dashboard`)
+  // Check if they have a family linked
+  const { data: profile } = await supabase
+    .from('users')
+    .select('family_id')
+    .eq('id', data.user.id)
+    .single()
+
+  // Direct traffic based on family status
+  if (profile?.family_id) {
+    return NextResponse.redirect(`${origin}/dashboard`)
+  } else {
+    return NextResponse.redirect(`${origin}/join-family`)
+  }
 }

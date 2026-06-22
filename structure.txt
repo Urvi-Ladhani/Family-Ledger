@@ -1,0 +1,42 @@
+C:\Users\Urvi\OneDrive\Desktop\family-ledger
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── README.md
+├── scratch
+|  ├── inspect-openapi.mjs
+|  └── test-users.mjs
+├── src
+|  └── app
+|     ├── api
+|     |  ├── bills
+|     |  ├── categories
+|     |  └── expenses
+|     ├── auth
+|     |  └── callback
+|     ├── create-family
+|     |  └── page.tsx
+|     ├── dashboard
+|     |  └── page.tsx
+|     ├── favicon.ico
+|     ├── globals.css
+|     ├── join-family
+|     |  └── page.tsx
+|     ├── layout.tsx
+|     ├── login
+|     |  └── page.tsx
+|     ├── page.tsx
+|     └── signup
+|        └── page.tsx
+├── tsconfig.json
+└── utils
+   ├── ocr-processor.ts
+   └── supabase
+      └── client.ts
+
+directory: 1340 file: 10334
+
+ignored: directory (17)
