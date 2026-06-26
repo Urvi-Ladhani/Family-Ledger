@@ -34,7 +34,7 @@ export default function ExpenseLedger() {
   const [editForm, setEditForm] = useState({ description: '', amount: '' });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // --- NEW: Bulk Actions State ---
+  // Bulk Actions State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchData = useCallback(async () => {
@@ -60,7 +60,7 @@ export default function ExpenseLedger() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  // --- Process Data (Search/Filter/Sort) ---
+  // Process Data (Search/Filter/Sort)
   const processedExpenses = useMemo(() => {
     let result = [...expenses];
     if (searchQuery) {
@@ -82,7 +82,7 @@ export default function ExpenseLedger() {
     return result;
   }, [expenses, searchQuery, selectedCategory, selectedPayer, sortConfig]);
 
-  // --- Handlers ---
+  // Handlers
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -90,11 +90,8 @@ export default function ExpenseLedger() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === processedExpenses.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(processedExpenses.map(e => e.id)));
-    }
+    if (selectedIds.size === processedExpenses.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(processedExpenses.map(e => e.id)));
   };
 
   const toggleSelectRow = (id: string) => {
@@ -165,7 +162,7 @@ export default function ExpenseLedger() {
   return (
     <div className="min-h-screen flex bg-[#F4F6F5] font-sans text-gray-900 overflow-hidden relative">
       
-      {/* SIDEBAR */}
+      {/* PERFECTED, UNIFIED SIDEBAR */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0 z-10 shadow-sm">
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-[#1A4D2E] rounded-lg flex items-center justify-center text-white font-bold">FL</div>
@@ -173,21 +170,38 @@ export default function ExpenseLedger() {
         </div>
         <nav className="flex-1 px-4 space-y-1">
           <p className="px-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4">Menu</p>
+          
           <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#1A4D2E] font-medium transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
             Dashboard
           </Link>
+          
+          {/* ACTIVE STATE ON EXPENSE LEDGER */}
           <Link href="/expense-ledger" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#1A4D2E] text-white font-medium shadow-md shadow-[#1A4D2E]/20 transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             Expense Ledger
           </Link>
+          
           <Link href="/activity-feed" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#1A4D2E] font-medium transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             Activity Feed
           </Link>
+          
           <Link href="/family" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#1A4D2E] font-medium transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             Family
+          </Link>
+          
+          <p className="px-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">General</p>
+          
+          <Link href="/analytics" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#1A4D2E] font-medium transition-all">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            Analytics
+          </Link>
+          
+          <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#1A4D2E] font-medium transition-all">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Settings
           </Link>
         </nav>
       </aside>
@@ -240,14 +254,8 @@ export default function ExpenseLedger() {
             <table className="w-full text-sm text-left">
               <thead className="border-b border-gray-100 text-gray-400 uppercase text-xs font-bold tracking-wider bg-gray-50/50">
                 <tr>
-                  {/* NEW: Select All Checkbox */}
                   <th className="py-4 px-6 w-12">
-                    <input 
-                      type="checkbox" 
-                      checked={processedExpenses.length > 0 && selectedIds.size === processedExpenses.length}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-gray-300 text-[#1A4D2E] focus:ring-[#1A4D2E]"
-                    />
+                    <input type="checkbox" checked={processedExpenses.length > 0 && selectedIds.size === processedExpenses.length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 text-[#1A4D2E] focus:ring-[#1A4D2E]" />
                   </th>
                   <th className="py-4 px-6 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
                     <div className="flex items-center gap-2">Title & Category {sortConfig?.key === 'title' && <span className="text-[#1A4D2E]">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}</div>
@@ -270,12 +278,7 @@ export default function ExpenseLedger() {
                   <tr key={exp.id} className={`transition-colors group ${selectedIds.has(exp.id) ? 'bg-[#E8F0EB]/50' : 'hover:bg-gray-50'}`}>
                     
                     <td className="py-4 px-6">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedIds.has(exp.id)}
-                        onChange={() => toggleSelectRow(exp.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-[#1A4D2E] focus:ring-[#1A4D2E]"
-                      />
+                      <input type="checkbox" checked={selectedIds.has(exp.id)} onChange={() => toggleSelectRow(exp.id)} className="w-4 h-4 rounded border-gray-300 text-[#1A4D2E] focus:ring-[#1A4D2E]" />
                     </td>
 
                     {/* EDIT MODE */}
@@ -349,7 +352,7 @@ export default function ExpenseLedger() {
         </div>
       </main>
 
-      {/* --- NEW: FLOATING BULK ACTION BAR --- */}
+      {/* FLOATING BULK ACTION BAR */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-4 rounded-[1.5rem] shadow-2xl flex items-center gap-6 z-40 animate-in slide-in-from-bottom-10 fade-in">
           <span className="font-bold text-sm bg-white/20 px-3 py-1 rounded-lg">{selectedIds.size} Selected</span>
