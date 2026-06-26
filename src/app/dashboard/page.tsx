@@ -31,7 +31,8 @@ export default function Dashboard() {
   const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
   const [reviewData, setReviewData] = useState({
     isOcr: false, file: null as File | null, extractedText: '', amount: '', description: '',
-    category_id: '', expense_date: new Date().toISOString().split('T')[0], paid_by: '', split_with: [] as string[]
+    category_id: '', expense_date: new Date().toISOString().split('T')[0], paid_by: '', split_with: [] as string[],
+    is_recurring: false
   });
 
   const fetchData = useCallback(async () => {
@@ -126,12 +127,14 @@ export default function Dashboard() {
              extractedText = await extractTextFromImage(imageSource);
           }
         } else if (file.type.startsWith('image/')) { extractedText = await extractTextFromImage(file); }
+        
         const parsedExpense = extractExpenseData(extractedText);
         const detectedCategory = categories.find((c) => c.name?.toLowerCase() === parsedExpense.category.toLowerCase())?.id || '';
+        
         setReviewData({
           isOcr: true, file, extractedText, amount: parsedExpense.amount ? String(parsedExpense.amount) : '',
           description: file.name, category_id: detectedCategory, expense_date: parsedExpense.date || new Date().toISOString().split('T')[0],
-          paid_by: userId, split_with: members.map(m => m.id)
+          paid_by: userId, split_with: members.map(m => m.id), is_recurring: false
         });
         setShowReviewModal(true);
       } catch (error) { alert('Error processing file.'); } finally { setUploading(false); }
@@ -140,7 +143,7 @@ export default function Dashboard() {
 
   const openManualModal = () => {
     if (!userId) return;
-    setReviewData({ isOcr: false, file: null, extractedText: '', amount: '', description: '', category_id: '', expense_date: new Date().toISOString().split('T')[0], paid_by: userId, split_with: members.map(m => m.id) });
+    setReviewData({ isOcr: false, file: null, extractedText: '', amount: '', description: '', category_id: '', expense_date: new Date().toISOString().split('T')[0], paid_by: userId, split_with: members.map(m => m.id), is_recurring: false });
     setShowReviewModal(true);
   };
 
@@ -165,16 +168,17 @@ export default function Dashboard() {
         }]).select('id').single();
         billId = newBill?.id;
       }
+      
       const payerName = members.find(m => m.id === reviewData.paid_by)?.full_name || 'Someone';
-      const splitNames = members.filter(m => reviewData.split_with.includes(m.id) && m.id !== reviewData.paid_by).map(m => m.full_name.split(' ')[0]).join(', ');
-      let finalDescription = reviewData.description;
-      if (splitNames.length > 0) finalDescription = `${reviewData.description} (Split with ${splitNames})`;
 
       await supabase.from('expenses').insert([{
         family_id: family.id, user_id: reviewData.paid_by, bill_id: billId, category_id: reviewData.category_id || null,
-        amount: parseFloat(reviewData.amount), currency: 'INR', description: finalDescription, expense_date: reviewData.expense_date,
+        amount: parseFloat(reviewData.amount), currency: 'INR', description: reviewData.description, expense_date: reviewData.expense_date,
+        split_with: reviewData.split_with, is_recurring: reviewData.is_recurring
       }]);
-      await logActivity('expense', `${payerName} added a ${formatMoney(reviewData.amount)} expense: ${reviewData.description}`);
+      
+      const recurringTag = reviewData.is_recurring ? ' (Monthly Subscription)' : '';
+      await logActivity('expense', `${payerName} added a ${formatMoney(reviewData.amount)} expense: ${reviewData.description}${recurringTag}`);
       setShowReviewModal(false); await fetchData();
     } catch (error) { alert('Failed to save expense.'); }
   };
@@ -186,7 +190,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex bg-[#F4F6F5] font-sans text-gray-900 overflow-hidden">
       
-      {/* SIDEBAR */}
+      {/* RESTORED SIDEBAR WITH ALL LINKS */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0 z-10 shadow-sm">
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-[#1A4D2E] rounded-lg flex items-center justify-center text-white font-bold">FL</div>
@@ -235,11 +239,10 @@ export default function Dashboard() {
           <div className="flex justify-between items-end">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-              <p className="text-gray-500 mt-1">Plan, track, and accomplish your expenses with ease.</p>
+              <p className="text-gray-500 mt-1">Welcome back, {userName}.</p>
             </div>
           </div>
 
-          {/* Quick Analytics Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-[#1A4D2E] rounded-[1.25rem] p-5 shadow-sm text-white flex flex-col justify-between">
               <p className="text-white/80 text-sm font-medium">Total Expenses</p>
@@ -250,12 +253,12 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-gray-900 mt-2">{expenses.length}</p>
             </div>
             <div className="bg-white rounded-[1.25rem] p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
-              <p className="text-gray-500 text-sm font-medium">Top Category</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2 capitalize">{analytics.topCategory || 'N/A'}</p>
+              <p className="text-gray-500 text-sm font-medium">Subscriptions</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{expenses.filter(e => e.is_recurring).length}</p>
             </div>
             <div className="bg-white rounded-[1.25rem] p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
-              <p className="text-gray-500 text-sm font-medium">Highest Spender</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2 truncate">You</p>
+              <p className="text-gray-500 text-sm font-medium">Top Category</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2 capitalize">{analytics.topCategory || 'N/A'}</p>
             </div>
           </div>
 
@@ -282,7 +285,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 60/40 Split Area */}
+          {/* RESTORED: 60/40 Split Area */}
           <div className="flex flex-col lg:flex-row gap-6">
             {/* LEFT: Shared Expense Ledger (60%) */}
             <div className="lg:w-[60%] flex flex-col bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6">
@@ -344,47 +347,53 @@ export default function Dashboard() {
             </div>
             <form onSubmit={handleSaveExpense} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Title</label>
-                <input type="text" value={reviewData.description} onChange={e => setReviewData({...reviewData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-[#1A4D2E] outline-none" required />
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Title</label>
+                <input type="text" value={reviewData.description} onChange={e => setReviewData({...reviewData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 outline-none" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Amount (₹)</label>
-                  <input type="number" step="0.01" value={reviewData.amount} onChange={e => setReviewData({...reviewData, amount: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-bold focus:ring-2 focus:ring-[#1A4D2E] outline-none" required />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Amount (₹)</label>
+                  <input type="number" step="0.01" value={reviewData.amount} onChange={e => setReviewData({...reviewData, amount: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-bold outline-none" required />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Date</label>
-                  <input type="date" value={reviewData.expense_date} onChange={e => setReviewData({...reviewData, expense_date: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-[#1A4D2E] outline-none" required />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Date</label>
+                  <input type="date" value={reviewData.expense_date} onChange={e => setReviewData({...reviewData, expense_date: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none" required />
                 </div>
               </div>
+              
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Category</label>
-                <select value={reviewData.category_id} onChange={e => setReviewData({...reviewData, category_id: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-[#1A4D2E] outline-none" required>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Category</label>
+                <select value={reviewData.category_id} onChange={e => setReviewData({...reviewData, category_id: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none" required>
                   <option value="">Select</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+
+              {/* SUBSCRIPTION TOGGLE */}
+              <div className="flex items-center gap-3 bg-[#E8F0EB]/50 p-4 rounded-[1rem] border border-[#1A4D2E]/20 mt-2">
+                 <input type="checkbox" checked={reviewData.is_recurring} onChange={e => setReviewData({...reviewData, is_recurring: e.target.checked})} className="w-5 h-5 text-[#1A4D2E] rounded border-gray-300 focus:ring-[#1A4D2E]" />
+                 <div>
+                    <p className="font-bold text-[#1A4D2E] text-sm">Monthly Subscription</p>
+                    <p className="text-xs text-gray-500">App repeats this bill on the 1st of every month.</p>
+                 </div>
+              </div>
+
               <div className="border-t border-gray-100 pt-4 mt-2">
-                <label className="block text-xs font-bold text-[#1A4D2E] uppercase tracking-wider mb-2">Paid By (Who gets reimbursed?)</label>
-                <select value={reviewData.paid_by} onChange={e => setReviewData({...reviewData, paid_by: e.target.value})} className="w-full bg-[#E8F0EB] text-[#1A4D2E] border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-[#1A4D2E] outline-none">
+                <label className="block text-xs font-bold text-[#1A4D2E] uppercase mb-2">Paid By</label>
+                <select value={reviewData.paid_by} onChange={e => setReviewData({...reviewData, paid_by: e.target.value})} className="w-full bg-[#E8F0EB] text-[#1A4D2E] border-0 rounded-xl px-4 py-3 font-bold outline-none">
                   {members.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
                 </select>
               </div>
               <div className="bg-gray-50 p-4 rounded-[1rem] border border-gray-200 mt-2">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Split Equally With</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-3">Split Equally With</label>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {members.map(m => (
                     <label key={m.id} className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={reviewData.split_with.includes(m.id)} onChange={() => toggleSplitMember(m.id)} className="w-4 h-4 text-[#1A4D2E] rounded border-gray-300 focus:ring-[#1A4D2E]" />
+                      <input type="checkbox" checked={reviewData.split_with.includes(m.id)} onChange={() => toggleSplitMember(m.id)} className="w-4 h-4 text-[#1A4D2E] rounded" />
                       <span className="text-sm font-medium text-gray-700">{m.full_name}</span>
                     </label>
                   ))}
                 </div>
-                {reviewData.amount && reviewData.split_with.length > 0 && (
-                  <div className="mt-4 text-sm font-bold text-[#1A4D2E] bg-[#E8F0EB] p-2 rounded-lg text-center">
-                    Split: {formatMoney(Number(reviewData.amount) / reviewData.split_with.length)} per person
-                  </div>
-                )}
               </div>
               <button type="submit" className="w-full bg-[#1A4D2E] hover:bg-[#11331E] text-white font-bold py-3.5 rounded-[1rem] mt-4 transition-colors">
                 Save Expense
