@@ -16,6 +16,14 @@ export default function HomePage() {
               <Link href="/dashboard" className="inline-flex items-center px-6 py-3 border border-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-50">
                 View Demo Dashboard
               </Link>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
             </div>
 
             <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
